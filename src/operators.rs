@@ -70,7 +70,26 @@ pub fn masked_softmax(y: &mut Tensor<f32>) {
     }
 }
 
-pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {}
+pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: f32) {
+    // 形状检查
+    let len = y.size();
+    let n = w.size();
+    assert!(len == x.size());
+    assert!(len % n == 0);
+
+    // 取得数据
+    let _y = unsafe { y.data_mut() };
+    let _x = x.data();
+    let _w = w.data();
+
+    // 逐个元素计算并修改y
+    for (yi, xi) in _y.chunks_mut(n).zip(_x.chunks(n)) {
+        let rhs = xi.iter().fold(0.0, |acc, x| acc + x * x);
+        let rhs = ((rhs / n as f32) + epsilon).sqrt();
+        let rhs = xi.iter().zip(_w.iter()).map(|(x, w)| (w * x) / rhs);
+        yi.iter_mut().zip(rhs).for_each(|(y, result)| *y = result);
+    }
+}
 
 // y = silu(x) * y
 // hint: this is an element-wise operation
