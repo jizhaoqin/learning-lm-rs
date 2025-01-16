@@ -84,9 +84,13 @@ pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: 
 
     // 逐个元素计算并修改y
     for (yi, xi) in _y.chunks_mut(n).zip(_x.chunks(n)) {
+        // 计算平方和
         let rhs = xi.iter().fold(0.0, |acc, x| acc + x * x);
+        // 计算均方根 (RMS)
         let rhs = ((rhs / n as f32) + epsilon).sqrt();
+        // 标准化数据并应用权重
         let rhs = xi.iter().zip(_w.iter()).map(|(x, w)| (w * x) / rhs);
+        // 修改y值
         yi.iter_mut().zip(rhs).for_each(|(y, result)| *y = result);
     }
 }
