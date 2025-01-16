@@ -98,6 +98,7 @@ pub fn rms_norm(y: &mut Tensor<f32>, x: &Tensor<f32>, w: &Tensor<f32>, epsilon: 
 // y = silu(x) * y
 // hint: this is an element-wise operation
 pub fn swiglu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
+    // 检查
     let len = y.size();
     assert!(len == x.size());
 
@@ -113,7 +114,44 @@ pub fn swiglu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
 // C = beta * C + alpha * A @ B^T
 // hint: You don't need to do an explicit transpose of B
 pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor<f32>, alpha: f32) {
-    todo!("实现 matmul_transb，计算前做一些必要的检查会帮助你后续调试");
+    // 检查
+    let (shape_a, shape_b, shape_c) = (a.shape(), b.shape(), c.shape());
+    let (m, n, k) = (shape_a[0], shape_b[0], shape_a[1]);
+    assert!(shape_c == &[m, n]);
+    // 计算A @ B.T
+    let mat_a = a.data();
+    let mat_b = b.data();
+    let mat_c = unsafe { c.data_mut() };
+
+    // mat_a
+    //     .chunks(k)
+    //     .zip(mat_c.chunks_mut(n))
+    //     .for_each(|(a_row, c_row)| {
+    //         c_row
+    //             .iter_mut()
+    //             .zip(mat_b.chunks(k))
+    //             .for_each(|(c_ij, b_column)| {
+    //                 let rhs = a_row
+    //                     .iter()
+    //                     .zip(b_column.iter())
+    //                     .fold(0.0, |acc, (a_ik, b_kj)| acc + a_ik * b_kj);
+    //                 *c_ij *= beta;
+    //                 *c_ij += alpha * rhs;
+    //             });
+    //     });
+
+    // 循环m次
+    for (a_row, c_row) in mat_a.chunks(k).zip(mat_c.chunks_mut(n)) {
+        // 循环n次
+        for (c_ij, b_column) in c_row.iter_mut().zip(mat_b.chunks(k)) {
+            let rhs = a_row
+                .iter()
+                .zip(b_column.iter())
+                .fold(0.0, |acc, (a_ik, b_kj)| acc + a_ik * b_kj);
+            *c_ij *= beta;
+            *c_ij += alpha * rhs;
+        }
+    }
 }
 
 // Dot product of two tensors (treated as vectors)
