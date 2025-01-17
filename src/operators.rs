@@ -212,7 +212,7 @@ pub fn random_sample(x: &Tensor<f32>, top_p: f32, top_k: u32, temperature: f32) 
         #[inline]
         fn from((i, p): (usize, &f32)) -> Self {
             Self {
-                val: p.clone(),
+                val: *p,
                 tok: i as _,
             }
         }
@@ -242,38 +242,32 @@ pub fn random_sample(x: &Tensor<f32>, top_p: f32, top_k: u32, temperature: f32) 
 // Your implementation should at least pass the following tests:
 #[test]
 fn test_silu() {
-    let mut y = Tensor::<f32>::new(vec![2., 3., 4.], &vec![1, 3]);
-    let x = Tensor::<f32>::new(vec![1., 2., 3.], &vec![1, 3]);
+    let mut y = Tensor::<f32>::new(vec![2., 3., 4.], &[1, 3]);
+    let x = Tensor::<f32>::new(vec![1., 2., 3.], &[1, 3]);
     swiglu(&mut y, &x);
     assert!(y.close_to(
-        &Tensor::<f32>::new(vec![1.4621172, 5.2847824, 11.43089], &vec![1, 3]),
+        &Tensor::<f32>::new(vec![1.4621172, 5.2847824, 11.43089], &[1, 3]),
         1e-3
     ));
 }
 
 #[test]
 fn test_rms_norm() {
-    let mut y = Tensor::<f32>::new(vec![1., 2., 3., 4.], &vec![2, 2]);
-    let x = Tensor::<f32>::new(vec![1., 2., 3., 4.], &vec![2, 2]);
-    let w = Tensor::<f32>::new(vec![1., 2.], &vec![2]);
+    let mut y = Tensor::<f32>::new(vec![1., 2., 3., 4.], &[2, 2]);
+    let x = Tensor::<f32>::new(vec![1., 2., 3., 4.], &[2, 2]);
+    let w = Tensor::<f32>::new(vec![1., 2.], &[2]);
     rms_norm(&mut y, &x, &w, 1e-6);
     assert!(y.close_to(
-        &Tensor::<f32>::new(
-            vec![0.6324554, 2.5298216, 0.8485281, 2.2627416],
-            &vec![2, 2]
-        ),
+        &Tensor::<f32>::new(vec![0.6324554, 2.5298216, 0.8485281, 2.2627416], &[2, 2]),
         1e-3
     ));
 }
 
 #[test]
 fn test_matmul_transb() {
-    let mut c = Tensor::<f32>::new(vec![1., 2., 3., 4.], &vec![2, 2]);
-    let a = Tensor::<f32>::new(vec![1., 2., 3., 4., 5., 6.], &vec![2, 3]);
-    let b = Tensor::<f32>::new(vec![1., 2., 3., 4., 5., 6.], &vec![2, 3]);
+    let mut c = Tensor::<f32>::new(vec![1., 2., 3., 4.], &[2, 2]);
+    let a = Tensor::<f32>::new(vec![1., 2., 3., 4., 5., 6.], &[2, 3]);
+    let b = Tensor::<f32>::new(vec![1., 2., 3., 4., 5., 6.], &[2, 3]);
     matmul_transb(&mut c, 1., &a, &b, 1.);
-    assert!(c.close_to(
-        &Tensor::<f32>::new(vec![15., 34., 35., 81.], &vec![2, 2]),
-        1e-3
-    ));
+    assert!(c.close_to(&Tensor::<f32>::new(vec![15., 34., 35., 81.], &[2, 2]), 1e-3));
 }

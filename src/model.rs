@@ -44,7 +44,7 @@ impl Llama<f32> {
             eps: config.rms_norm_eps,
             rope_theta: config.rope_theta,
             max_seq_len: config.max_position_embeddings,
-            params: params,
+            params,
             bos_token_id: config.bos_token_id,
             eos_token_id: config.eos_token_id,
         }
@@ -62,13 +62,13 @@ impl Llama<f32> {
         let n_groups = self.n_q_h / self.n_kv_h;
 
         // Some pre-allocated buffers that will be reused
-        let mut residual = Tensor::<f32>::default(&vec![seq_len, self.d]);
-        let mut hidden_states = Tensor::<f32>::default(&vec![seq_len, self.d]);
-        let mut q_buf = Tensor::<f32>::default(&vec![seq_len, self.n_q_h * self.dqkv]);
+        let mut residual = Tensor::<f32>::default(&[seq_len, self.d]);
+        let mut hidden_states = Tensor::<f32>::default(&[seq_len, self.d]);
+        let mut q_buf = Tensor::<f32>::default(&[seq_len, self.n_q_h * self.dqkv]);
         let mut att_scores =
-            Tensor::<f32>::default(&vec![self.n_kv_h, n_groups, seq_len, total_seq_len]);
-        let mut gate_buf = Tensor::<f32>::default(&vec![seq_len, self.di]);
-        let mut up_buf = Tensor::<f32>::default(&vec![seq_len, self.di]);
+            Tensor::<f32>::default(&[self.n_kv_h, n_groups, seq_len, total_seq_len]);
+        let mut gate_buf = Tensor::<f32>::default(&[seq_len, self.di]);
+        let mut up_buf = Tensor::<f32>::default(&[seq_len, self.di]);
 
         // Computation Starts Here
         // Embedding lookup
@@ -82,7 +82,7 @@ impl Llama<f32> {
                 self.eps,
             );
 
-            let q = (&mut q_buf).reshape(&vec![seq_len, self.n_q_h * self.dqkv]); // (seq, n_h * dqkv)
+            let q = q_buf.reshape(&vec![seq_len, self.n_q_h * self.dqkv]); // (seq, n_h * dqkv)
             let k = &mut cache.k_cache(layer, past_seq_len); // (seq, n_kv_h * dqkv)
             let v = &mut cache.v_cache(layer, past_seq_len); // (seq, n_kv_h * dqkv)
             OP::matmul_transb(q, 0., &hidden_states, &self.params.wq[layer], 1.0);
@@ -110,9 +110,9 @@ impl Llama<f32> {
 
         // No matter what seq_len, the output is always a 1D vector of length vocab,
         // which contains the probabilities for the next token.
-        let mut logits = Tensor::<f32>::default(&vec![1, self.vocab]);
-        let mut hidden_states = hidden_states.slice((seq_len - 1) * self.d, &vec![1, self.d]);
-        let residual = residual.slice((seq_len - 1) * self.d, &vec![self.d]);
+        let mut logits = Tensor::<f32>::default(&[1, self.vocab]);
+        let mut hidden_states = hidden_states.slice((seq_len - 1) * self.d, &[1, self.d]);
+        let residual = residual.slice((seq_len - 1) * self.d, &[self.d]);
 
         OP::rms_norm(
             &mut hidden_states,
@@ -186,14 +186,14 @@ pub fn test_mlp() {
     let seq_len = 4;
     let d = 2;
     let di = 3;
-    let mut residual = Tensor::<f32>::new(vec![1., 1., 1., 1., 1., 1., 1., 1.], &vec![seq_len, d]);
-    let mut hidden_states = Tensor::<f32>::default(&vec![seq_len, d]);
-    let mut gate_buf = Tensor::<f32>::default(&vec![seq_len, di]);
-    let mut up_buf = Tensor::<f32>::default(&vec![seq_len, di]);
-    let w_up = Tensor::<f32>::new(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], &vec![di, d]);
-    let w_down = Tensor::<f32>::new(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], &vec![d, di]);
-    let w_gate = Tensor::<f32>::new(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], &vec![di, d]);
-    let rms_w = Tensor::<f32>::new(vec![1., 1.], &vec![d]);
+    let mut residual = Tensor::<f32>::new(vec![1., 1., 1., 1., 1., 1., 1., 1.], &[seq_len, d]);
+    let mut hidden_states = Tensor::<f32>::default(&[seq_len, d]);
+    let mut gate_buf = Tensor::<f32>::default(&[seq_len, di]);
+    let mut up_buf = Tensor::<f32>::default(&[seq_len, di]);
+    let w_up = Tensor::<f32>::new(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], &[di, d]);
+    let w_down = Tensor::<f32>::new(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], &[d, di]);
+    let w_gate = Tensor::<f32>::new(vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6], &[di, d]);
+    let rms_w = Tensor::<f32>::new(vec![1., 1.], &[d]);
     let eps = 1e-6;
     mlp(
         &mut residual,
@@ -223,7 +223,7 @@ pub fn test_mlp() {
                 1.3429964, 1.7290739, 1.3429964, 1.7290739, 1.3429964, 1.7290739, 1.3429964,
                 1.7290739
             ],
-            &vec![seq_len, d]
+            &[seq_len, d]
         ),
         1e-3
     ))
