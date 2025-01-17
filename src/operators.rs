@@ -107,8 +107,14 @@ pub fn swiglu(y: &mut Tensor<f32>, x: &Tensor<f32>) {
     let _x = x.data();
 
     // 逐个元素计算silu(x)*y
-    let silu_x_iter = _x.iter().map(|element| element / (1. + (-element).exp()));
-    _y.iter_mut().zip(silu_x_iter).for_each(|(y, x)| *y *= x);
+    _y.iter_mut().zip(_x.iter()).for_each(|(y, x)| {
+        let rhs = x / (1.0 + (-x).exp());
+        *y *= rhs;
+    });
+}
+
+pub fn matmul(a: &Tensor<f32>, b: &Tensor<f32>, c: &mut Tensor<f32>) {
+    matmul_transb(c, 0.0, a, b, 1.0);
 }
 
 // C = beta * C + alpha * A @ B^T
@@ -118,10 +124,23 @@ pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor
     let (shape_a, shape_b, shape_c) = (a.shape(), b.shape(), c.shape());
     let (m, n, k) = (shape_a[0], shape_b[0], shape_a[1]);
     assert!(shape_c == &[m, n]);
+    assert!(shape_b[1] == k);
     // 计算A @ B.T
     let mat_a = a.data();
     let mat_b = b.data();
     let mat_c = unsafe { c.data_mut() };
+
+    // 循环m次
+    for (a_row, c_row) in mat_a.chunks(k).zip(mat_c.chunks_mut(n)) {
+        // 循环n次
+        for (c_ij, b_column) in c_row.iter_mut().zip(mat_b.chunks(k)) {
+            let rhs = a_row
+                .iter()
+                .zip(b_column.iter())
+                .fold(0.0, |acc, (a_ik, b_kj)| acc + a_ik * b_kj);
+            *c_ij = (beta * *c_ij) + (alpha * rhs);
+        }
+    }
 
     // mat_a
     //     .chunks(k)
@@ -139,19 +158,6 @@ pub fn matmul_transb(c: &mut Tensor<f32>, beta: f32, a: &Tensor<f32>, b: &Tensor
     //                 *c_ij += alpha * rhs;
     //             });
     //     });
-
-    // 循环m次
-    for (a_row, c_row) in mat_a.chunks(k).zip(mat_c.chunks_mut(n)) {
-        // 循环n次
-        for (c_ij, b_column) in c_row.iter_mut().zip(mat_b.chunks(k)) {
-            let rhs = a_row
-                .iter()
-                .zip(b_column.iter())
-                .fold(0.0, |acc, (a_ik, b_kj)| acc + a_ik * b_kj);
-            *c_ij *= beta;
-            *c_ij += alpha * rhs;
-        }
-    }
 }
 
 // Dot product of two tensors (treated as vectors)
