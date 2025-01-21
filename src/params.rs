@@ -22,9 +22,7 @@ pub struct LLamaParams<T> {
 
 impl LLamaParams<f32> {
     pub fn from_safetensors(safetensor: &SafeTensors, config: &LlamaConfigJson) -> Self {
-        // get layer number
-        let num_layers = config.num_hidden_layers;
-        // define closure to extract to get a Tensor<f32>
+        // define closure to get Tensor<f32>
         let get_tensor = |name: &str| -> Tensor<f32> {
             let view = safetensor
                 .tensor(name)
@@ -36,11 +34,13 @@ impl LLamaParams<f32> {
                 .collect::<Vec<f32>>();
             Tensor::new(tensor, view.shape())
         };
-        // define another closure to get Vec<Tensor<f32>>
-        let get_tensors = |w_name: &str| {
+        // get layer number
+        let num_layers = config.num_hidden_layers;
+        // define closure to get Vec<Tensor<f32>>
+        let get_tensors = |w_name: &str| -> Vec<Tensor<f32>> {
             (0..num_layers)
                 .map(|i| get_tensor(&format!("model.layers.{}.{}.weight", i, w_name)))
-                .collect::<Vec<Tensor<f32>>>()
+                .collect()
         };
 
         LLamaParams {

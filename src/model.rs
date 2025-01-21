@@ -212,16 +212,6 @@ pub fn test_mlp() {
         eps,
     );
 
-    // println!("-------------------------");
-    // println!("{:?}", residual.data());
-    // println!(
-    //     "{:?}",
-    //     vec![
-    //         1.3429964, 1.7290739, 1.3429964, 1.7290739, 1.3429964, 1.7290739, 1.3429964, 1.7290739
-    //     ]
-    // );
-    // assert!(residual.shape() == &vec![seq_len, d]);
-
     assert!(residual.close_to(
         &Tensor::<f32>::new(
             vec![
