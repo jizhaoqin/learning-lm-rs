@@ -27,10 +27,15 @@ pub struct Llama<T> {
 
 impl Llama<f32> {
     pub fn from_safetensors(model_dir: impl AsRef<Path>) -> Self {
+        // open config.json file of LLaMA
         let config = File::open(model_dir.as_ref().join("config.json")).unwrap();
+        // deserialize config.json file, read config to a struct
         let config: LlamaConfigJson = serde_json::from_reader(config).unwrap();
+        // read safetensors file data
         let model_file = std::fs::read(model_dir.as_ref().join("model.safetensors")).unwrap();
+        // convert data to SafeTensors
         let safetensor = SafeTensors::deserialize(&model_file).unwrap();
+        // extract LLaMA Parameters
         let params = LLamaParams::from_safetensors(&safetensor, &config);
 
         Self {

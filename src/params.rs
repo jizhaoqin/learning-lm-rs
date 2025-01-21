@@ -22,14 +22,40 @@ pub struct LLamaParams<T> {
 
 impl LLamaParams<f32> {
     pub fn from_safetensors(safetensor: &SafeTensors, config: &LlamaConfigJson) -> Self {
-        todo!("实现从safetensors文件的模型参数加载");
-        // let get_tensor: impl Fn(&str) -> Tensor<f32> = |name: &str| {
-        // ...    
-        // };
-        
-        // LLamaParams {
-        //     embedding_table: get_tensor(...),
-        //     ...
-        // }
+        // get layer number
+        let num_layers = config.num_hidden_layers;
+        // define closure to extract to get a Tensor<f32>
+        let get_tensor = |name: &str| -> Tensor<f32> {
+            let view = safetensor
+                .tensor(name)
+                .unwrap_or_else(|_| panic!("Tensor {} not found", name));
+            let tensor = view
+                .data()
+                .chunks(4)
+                .map(|chunk| f32::from_ne_bytes(chunk.try_into().expect("convert to f32 failed")))
+                .collect::<Vec<f32>>();
+            Tensor::new(tensor, view.shape())
+        };
+        // define another closure to get Vec<Tensor<f32>>
+        let get_tensors = |w_name: &str| {
+            (0..num_layers)
+                .map(|i| get_tensor(&format!("model.layers.{}.{}.weight", i, w_name)))
+                .collect::<Vec<Tensor<f32>>>()
+        };
+
+        LLamaParams {
+            embedding_table: get_tensor("lm_head.weight"),
+            rms_att_w: get_tensors("input_layernorm"),
+            wq: get_tensors("self_attn.q_proj"),
+            wk: get_tensors("self_attn.k_proj"),
+            wv: get_tensors("self_attn.v_proj"),
+            wo: get_tensors("self_attn.o_proj"),
+            rms_ffn_w: get_tensors("post_attention_layernorm"),
+            w_up: get_tensors("mlp.up_proj"),
+            w_gate: get_tensors("mlp.gate_proj"),
+            w_down: get_tensors("mlp.down_proj"),
+            rms_out_w: get_tensor("model.norm.weight"),
+            lm_head: get_tensor("lm_head.weight"),
+        }
     }
 }
